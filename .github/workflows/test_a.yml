@@ -612,6 +612,9 @@ jobs:
           else
             echo "⚠️ susfs_def.h not found in repo"
           fi
+
+          echo "🔧 Applying New SUSFS change patch..."
+          patch -p1 "https://raw.githubusercontent.com/yougotme101/kernel_patches/main/0001-Added-new-susfs-change.patch"
           
           echo "🔍 Verifying SUSFS files..."
           for f in fs/susfs.c include/linux/susfs.h include/linux/susfs_def.h; do
@@ -622,34 +625,15 @@ jobs:
           rm -rf susfs4ksu
           
           # Create symbolic link for drivers/kernelsu (if needed by build system)
-          if [ ! -L "drivers/kernelsu" ]; then
-            ln -sf ../KernelSU drivers/kernelsu
-            echo "✔ Created drivers/kernelsu symlink"
-          fi
+          # if [ ! -L "drivers/kernelsu" ]; then
+          #   ln -sf ../KernelSU drivers/kernelsu
+          #  echo "✔ Created drivers/kernelsu symlink"
+          # fi
 
-          # Add KSU configs
+          # Add Extra configs
           CONFIG_FILE="arch/arm64/configs/${{ env.DEFCONFIG_NAME }}"
           cat >> "$CONFIG_FILE" << 'EOF'
-          CONFIG_KSU=y
-          CONFIG_KPROBES=y
-          CONFIG_HAVE_KPROBES=y
-          CONFIG_KPROBE_EVENTS=y
           CONFIG_OVERLAY_FS=y
-          CONFIG_KSU_SUSFS=y
-          CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y
-          CONFIG_KSU_SUSFS_SUS_PATH=y
-          CONFIG_KSU_SUSFS_SUS_MOUNT=y
-          CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y
-          CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y
-          CONFIG_KSU_SUSFS_SUS_KSTAT=y
-          CONFIG_KSU_SUSFS_TRY_UMOUNT=y
-          CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y
-          CONFIG_KSU_SUSFS_SPOOF_UNAME=y
-          CONFIG_KSU_SUSFS_ENABLE_LOG=y
-          CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y
-          CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
-          CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
-          CONFIG_KSU_SUSFS_SUS_SU=y
           CONFIG_TMPFS_XATTR=y
           CONFIG_TMPFS_POSIX_ACL=y
           EOF
