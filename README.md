@@ -7,10 +7,10 @@ This workflow is configured for specific devices. **You must modify the settings
 - Added Extra TCP Congestion: BBR, Cubic, Westwood
 - Added KSU Fork: KowSU, MamboSU, MamboSU-SUSFS(unstable, don't crying about it)
 - Added Custom Tickrate Options: 500hz, 600hz, 750hz
-- Added to build with BBG
+- Added options to build with BBG
 - FullLTO build
-- Add Swapfile options and Cleanup Disk tools to free up space
-- Added XStock, update weekly (basically YASK, but i changed the the default manager to WildKSU, bring back BBG Support, and remove KPM Feature)
+- Add Swapfile options and Cleanup Disk tools to free up space for runners
+- Added XStock, update weekly (basically YASK, but i changed the the default manager to WildKSU, bring back BBG Support, and remove KPM Feature for SukiSU)
 
 ## 🔧 Quick Start
 
