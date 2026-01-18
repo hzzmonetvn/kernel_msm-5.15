@@ -219,8 +219,8 @@ jobs:
            ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64
 
       - name: "Apply XKernel perf profile patch"
-       working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
-       run: |
+        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
+        run: |
          git apply --check "https://raw.githubusercontent.com/yougotme101/xkernel_profiles/main/0001-xkernel-profiles.patch"
          git apply "https://raw.githubusercontent.com/yougotme101/xkernel_profiles/main/0001-xkernel-profiles.patch"
 
