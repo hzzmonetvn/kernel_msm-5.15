@@ -179,6 +179,21 @@ jobs:
         run: |
           git clone --recursive --branch ${{ github.event.inputs.kernelBranch }} \
             ${{ github.event.inputs.kernelSourceURL }} ${{ env.kernelName }} --depth=1
+            
+          # Download and Apply the xkernel-profiles patch
+          echo "Applying xkernel-profiles patch..."
+          curl -LSs https://raw.githubusercontent.com/yougotme101/xkernel_profiles/main/0001-xkernel-profiles.patch -o xkernel.patch
+          
+          # Use -p1 to ensure it matches the internal folder structure
+          if git apply --check xkernel.patch; then
+            git apply xkernel.patch
+            echo "✅ xkernel-profiles applied successfully"
+          else
+            echo "⚠️ git apply failed, trying with patch -p1..."
+            patch -p1 < xkernel.patch || echo "❌ Patch failed to apply"
+          fi
+          
+          rm xkernel.patch
 
       - name: "📥 Initialize repo"
         working-directory: ${{ env.WORK_DIR}}
@@ -217,18 +232,6 @@ jobs:
            -e '/^MODULES_ORDER=/d' \
            -e '/^MODULES_LIST=/d' \
            ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64
-
-      - name: "Apply XKernel perf profile patch"
-        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
-        run: |
-         git apply --check "https://raw.githubusercontent.com/yougotme101/xkernel_profiles/main/0001-xkernel-profiles.patch"
-         git apply "https://raw.githubusercontent.com/yougotme101/xkernel_profiles/main/0001-xkernel-profiles.patch"
-
-      - name: "Verify patch applied"
-        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
-        run: |
-          grep -R "sysctl_perf_profile" kernel || true
-          grep -R "perf_profile_register" kernel || true
 
       - name: "⚙️ Configure kernel optimization and tick rate"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
