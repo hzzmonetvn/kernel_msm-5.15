@@ -218,6 +218,18 @@ jobs:
            -e '/^MODULES_LIST=/d' \
            ${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64
 
+      - name: "Apply XKernel perf profile patch"
+       working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
+       run: |
+         git apply --check "https://raw.githubusercontent.com/yougotme101/xkernel_profiles/main/0001-xkernel-profiles.patch"
+         git apply "https://raw.githubusercontent.com/yougotme101/xkernel_profiles/main/0001-xkernel-profiles.patch"
+
+      - name: "Verify patch applied"
+        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
+        run: |
+          grep -R "sysctl_perf_profile" kernel || true
+          grep -R "perf_profile_register" kernel || true
+
       - name: "⚙️ Configure kernel optimization and tick rate"
         working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
         run: |
@@ -375,9 +387,6 @@ jobs:
 
           # Script sign patch
           apply_patch "https://raw.githubusercontent.com/yougotme101/kernel_patches/main/0001-scripts-sign-builds.patch"
-
-          # Add Xprofiles patch
-          patch -p1 "https://raw.githubusercontent.com/yougotme101/xkernel_profiles/main/0001-xkernel_profiles.patch"
           
           echo "✅ Applied -${{ github.event.inputs.optimizationLevel }} Optimization"
           echo "✅ Applied ${{ github.event.inputs.tickRate }}Hz tick rate"
