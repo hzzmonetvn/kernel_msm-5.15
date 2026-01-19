@@ -214,17 +214,16 @@ jobs:
           
           echo "📦 Installing Wild KSU..."
 
-          # Install WildKSU with SUSFS
+          # Install WildKSU
           curl -LSs "https://raw.githubusercontent.com/WildKernels/Wild_KSU/wild/kernel/setup.sh" | bash -s wild
           
           echo "✔ Wild KSU installed successfully"
           
           # Clone SUSFS4KSU for kernel patches only (not KSU integration)
           echo "📦 Cloning SUSFS4KSU for kernel patches..."
-          git clone --depth=1 https://github.com/yougotme101/susfs4ksu.git -b gki-android13-5.15
-          
+          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android13-5.15
+
           SUSFS_KERNEL_PATCH="susfs4ksu/kernel_patches/50_add_susfs_in_gki-android13-5.15.patch"
-          
           echo "🔧 Applying SUSFS kernel patch..."
           if patch -p1 < "$SUSFS_KERNEL_PATCH"; then
             echo "✅ SUSFS patch successfully applied"
@@ -291,6 +290,7 @@ jobs:
           CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
           CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
           CONFIG_KSU_SUSFS_SUS_SU=y
+          EOF
           
           echo "🎉 Wild KSU with SUSFS kernel patches fully integrated!"
 
