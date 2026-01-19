@@ -179,21 +179,6 @@ jobs:
         run: |
           git clone --recursive --branch ${{ github.event.inputs.kernelBranch }} \
             ${{ github.event.inputs.kernelSourceURL }} ${{ env.kernelName }} --depth=1
-            
-          # Download and Apply the xkernel-profiles patch
-          echo "Applying xkernel-profiles patch..."
-          curl -LSs https://raw.githubusercontent.com/yougotme101/xkernel_profiles/main/0001-xkernel-profiles.patch -o xkernel.patch
-          
-          # Use -p1 to ensure it matches the internal folder structure
-          if git apply --check xkernel.patch; then
-            git apply xkernel.patch
-            echo "✅ xkernel-profiles applied successfully"
-          else
-            echo "⚠️ git apply failed, trying with patch -p1..."
-            patch -p1 < xkernel.patch || echo "❌ Patch failed to apply"
-          fi
-          
-          rm xkernel.patch
 
       - name: "📥 Initialize repo"
         working-directory: ${{ env.WORK_DIR}}
@@ -594,10 +579,9 @@ jobs:
           
           # Clone SUSFS4KSU for kernel patches only (not KSU integration)
           echo "📦 Cloning SUSFS4KSU for kernel patches..."
-          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android13-5.15
-          
+          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android13-5.15
+
           SUSFS_KERNEL_PATCH="susfs4ksu/kernel_patches/50_add_susfs_in_gki-android13-5.15.patch"
-          
           echo "🔧 Applying SUSFS kernel patch..."
           if patch -p1 < "$SUSFS_KERNEL_PATCH"; then
             echo "✅ SUSFS patch successfully applied"
@@ -627,9 +611,6 @@ jobs:
           else
             echo "⚠️ susfs_def.h not found in repo"
           fi
-
-          echo "🔧 Applying New SUSFS change patch..."
-          patch -p1 "https://raw.githubusercontent.com/yougotme101/kernel_patches/main/0001-Added-new-susfs-change.patch"
           
           echo "🔍 Verifying SUSFS files..."
           for f in fs/susfs.c include/linux/susfs.h include/linux/susfs_def.h; do
@@ -640,15 +621,34 @@ jobs:
           rm -rf susfs4ksu
           
           # Create symbolic link for drivers/kernelsu (if needed by build system)
-          # if [ ! -L "drivers/kernelsu" ]; then
-          #   ln -sf ../KernelSU drivers/kernelsu
-          #  echo "✔ Created drivers/kernelsu symlink"
-          # fi
+          if [ ! -L "drivers/kernelsu" ]; then
+            ln -sf ../KernelSU drivers/kernelsu
+            echo "✔ Created drivers/kernelsu symlink"
+          fi
 
-          # Add Extra configs
+          # Add KSU configs
           CONFIG_FILE="arch/arm64/configs/${{ env.DEFCONFIG_NAME }}"
           cat >> "$CONFIG_FILE" << 'EOF'
+          CONFIG_KSU=y
+          CONFIG_KPROBES=y
+          CONFIG_HAVE_KPROBES=y
+          CONFIG_KPROBE_EVENTS=y
           CONFIG_OVERLAY_FS=y
+          CONFIG_KSU_SUSFS=y
+          CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y
+          CONFIG_KSU_SUSFS_SUS_PATH=y
+          CONFIG_KSU_SUSFS_SUS_MOUNT=y
+          CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y
+          CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y
+          CONFIG_KSU_SUSFS_SUS_KSTAT=y
+          CONFIG_KSU_SUSFS_TRY_UMOUNT=y
+          CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y
+          CONFIG_KSU_SUSFS_SPOOF_UNAME=y
+          CONFIG_KSU_SUSFS_ENABLE_LOG=y
+          CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y
+          CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
+          CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
+          CONFIG_KSU_SUSFS_SUS_SU=y
           CONFIG_TMPFS_XATTR=y
           CONFIG_TMPFS_POSIX_ACL=y
           EOF
