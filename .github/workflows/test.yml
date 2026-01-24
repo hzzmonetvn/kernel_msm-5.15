@@ -62,6 +62,7 @@ on:
         type: choice
         default: "250"
         options:
+          - "default"
           - "100"
           - "250"
           - "300"
@@ -90,6 +91,13 @@ jobs:
           echo "BUILD_TIME=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
           sudo apt-get update -qq
           sudo apt-get install -y repo rsync aria2
+
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          echo "vm.swappiness=60" | sudo tee -a /etc/sysctl.conf
+          sudo sysctl -p
 
       - name: "🌟 Clone kernel source"
         working-directory: ./${{ env.kernelDir }}
@@ -163,33 +171,44 @@ jobs:
               echo "CONFIG_CC_OPTIMIZE_FOR_SIZE=y" >> "$CONFIG_FILE"
               ;;
           esac
-          
-          # Remove existing tick rate configs
-          sed -i '/^CONFIG_NO_HZ=/d' "$CONFIG_FILE"
-          sed -i '/^CONFIG_HZ=/d' "$CONFIG_FILE"
-          sed -i '/^CONFIG_HZ_100=/d' "$CONFIG_FILE"
-          sed -i '/^CONFIG_HZ_250=/d' "$CONFIG_FILE"
-          sed -i '/^CONFIG_HZ_300=/d' "$CONFIG_FILE"
-          sed -i '/^CONFIG_HZ_1000=/d' "$CONFIG_FILE"
-          
+                   
           # Apply selected tick rate
           case "${{ github.event.inputs.tickRate }}" in
+          default)
+              echo Nothing to change. Keep Default.
+              ;;
             100)
+              sed -i '/^CONFIG_HZ_100=/d' "$CONFIG_FILE"
+              sed -i '/^CONFIG_HZ_250=/d' "$CONFIG_FILE"
+              sed -i '/^CONFIG_HZ_300=/d' "$CONFIG_FILE"
+              sed -i '/^CONFIG_HZ_1000=/d' "$CONFIG_FILE"
               echo "CONFIG_NO_HZ_IDLE=y" >> "$CONFIG_FILE"
               echo "CONFIG_HZ=100" >> "$CONFIG_FILE"
               echo "CONFIG_HZ_100=y" >> "$CONFIG_FILE"
               ;;
             250)
+              sed -i '/^CONFIG_HZ_100=/d' "$CONFIG_FILE"
+              sed -i '/^CONFIG_HZ_250=/d' "$CONFIG_FILE"
+              sed -i '/^CONFIG_HZ_300=/d' "$CONFIG_FILE"
+              sed -i '/^CONFIG_HZ_1000=/d' "$CONFIG_FILE"
               echo "CONFIG_NO_HZ_IDLE=y" >> "$CONFIG_FILE"
               echo "CONFIG_HZ=250" >> "$CONFIG_FILE"
               echo "CONFIG_HZ_250=y" >> "$CONFIG_FILE"
               ;;
             300)
+              sed -i '/^CONFIG_HZ_100=/d' "$CONFIG_FILE"
+              sed -i '/^CONFIG_HZ_250=/d' "$CONFIG_FILE"
+              sed -i '/^CONFIG_HZ_300=/d' "$CONFIG_FILE"
+              sed -i '/^CONFIG_HZ_1000=/d' "$CONFIG_FILE"
               echo "CONFIG_NO_HZ_IDLE=y" >> "$CONFIG_FILE"
               echo "CONFIG_HZ=300" >> "$CONFIG_FILE"
               echo "CONFIG_HZ_300=y" >> "$CONFIG_FILE"
               ;;
             1000)
+              sed -i '/^CONFIG_HZ_100=/d' "$CONFIG_FILE"
+              sed -i '/^CONFIG_HZ_250=/d' "$CONFIG_FILE"
+              sed -i '/^CONFIG_HZ_300=/d' "$CONFIG_FILE"
+              sed -i '/^CONFIG_HZ_1000=/d' "$CONFIG_FILE"
               echo "CONFIG_NO_HZ_IDLE=y" >> "$CONFIG_FILE"
               echo "CONFIG_HZ=1000" >> "$CONFIG_FILE"
               echo "CONFIG_HZ_1000=y" >> "$CONFIG_FILE"
@@ -207,15 +226,6 @@ jobs:
           
           echo "✅ Applied -${{ github.event.inputs.optimizationLevel }} optimization"
           echo "✅ Applied ${{ github.event.inputs.tickRate }}Hz tick rate"
-
-      - name: "🔧 Add BBG Support (KSU variant only)"
-        if: matrix.variant == 'ksu'
-        working-directory: ./${{ env.kernelDir }}/${{ env.kernelName }}
-        run: |
-          echo "Adding BBG..."
-          wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
-          echo "CONFIG_BBG=y" >> arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
-          sed -i '/^config LSM$/,/^help$/{ /^[[:space:]]*default/ { /baseband_guard/! s/landlock/landlock,baseband_guard/ } }' security/Kconfig
 
       - name: "🔧 Setup KernelSU - Official with SUSFS"
         if: matrix.variant == 'ksu' && github.event.inputs.ksuVariant == 'kernelsu'
@@ -382,11 +392,20 @@ jobs:
             curl -L -o susfs.patch "$SUSFS_PATCH"
             patch -p1 < susfs.patch || echo "Warning: SUSFS patch failed"
           fi
+
+          # Apply syscall hooks
+          # curl -L -o hooks.patch "https://raw.githubusercontent.com/topnotchfreaks/kernel_patches/main/scope_min_manual_hooks_v1.6.patch"
+          # patch -p1 < hooks.patch || echo "Warning: Syscall hooks failed"
           
           # Add KSU configs
           CONFIG_FILE="arch/arm64/configs/${{ env.DEFCONFIG_NAME }}"
           cat >> "$CONFIG_FILE" << 'EOF'
           CONFIG_KSU=y
+          # CONFIG_KSU_MANUAL_HOOK is not set
+          CONFIG_KSU_SYSCALL_HOOK=y
+          CONFIG_KPROBES=y
+          CONFIG_KRETPROBES=y
+          CONFIG_HAVE_SYSCALL_TRACEPOINTS=y
           CONFIG_KSU_SUSFS=y
           CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y
           CONFIG_KSU_SUSFS_SUS_PATH=y
@@ -402,7 +421,7 @@ jobs:
           CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y
           CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
           CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
-          CONFIG_KSU_SUSFS_SUS_SU=y
+          CONFIG_KSU_SUSFS_SUS_SU=n
           CONFIG_TMPFS_XATTR=y
           CONFIG_TMPFS_POSIX_ACL=y
           EOF
@@ -418,13 +437,13 @@ jobs:
           echo "📦 Installing Wild KSU..."
 
           # Install WildKSU with SUSFS
-          curl -LSs "https://raw.githubusercontent.com/WildKernels/Wild_KSU/wild/kernel/setup.sh" | bash -s susfs
-          
+          curl -LSs "https://raw.githubusercontent.com/WildKernels/Wild_KSU/wild/kernel/setup.sh" | bash -s stable
+      
           echo "✔ Wild KSU installed successfully"
           
           # Clone SUSFS4KSU for kernel patches only (not KSU integration)
           echo "📦 Cloning SUSFS4KSU for kernel patches..."
-          git clone --depth=1 https://github.com/belowzeroiq/susfs4ksu.git -b wild
+          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android13-5.15
           
           SUSFS_KERNEL_PATCH="susfs4ksu/kernel_patches/50_add_susfs_in_gki-android13-5.15.patch"
           
@@ -504,7 +523,7 @@ jobs:
       - name: "🔨 Build kernel"
         working-directory: ${{ env.WORK_DIR }}
         run: |
-          LTO=thin \
+          LTO=full \
           BUILD_CONFIG=${{ env.kernelDir }}/${{ env.kernelName }}/build.config.gki.aarch64 \
           build/build.sh -j$(nproc --all)
 
@@ -571,31 +590,62 @@ jobs:
           name: ${{ env.ZIP_NAME }}
           path: ${{ env.ZIP_PATH }}
           retention-days: 7
-
+          
       - name: "📱 Send to Telegram"
         if: always()
         run: |
-          if [[ -f "${{ env.ZIP_PATH }}" ]]; then
-            KSU_TEXT=""
-            if [ "${{ github.event.inputs.buildKSU }}" != "noksu" ]; then
-              KSU_TEXT="
-          KSU Variant: ${{ github.event.inputs.ksuVariant }}"
-            fi
-            
-            CAPTION="✅ Kernel Build Complete
-          Branch: ${{ github.event.inputs.kernelBranch }}
-          Optimization: -${{ github.event.inputs.optimizationLevel }}
-          Tick Rate: ${{ github.event.inputs.tickRate }}Hz
-          Variants: ${{ github.event.inputs.buildKSU }}${KSU_TEXT}
-          Time: $(date '+%Y-%m-%d %H:%M:%S')"
-            
-            curl -s -F document=@"${{ env.ZIP_PATH }}" \
-                 -F caption="$CAPTION" \
-                 -F chat_id=${{ secrets.TELEGRAM_USER_ID }} \
-                 "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument"
-          else
-            curl -s -X POST \
-                 -d chat_id=${{ secrets.TELEGRAM_USER_ID }} \
-                 -d text="❌ Kernel build failed - Optimization: -${{ github.event.inputs.optimizationLevel }}, Tick: ${{ github.event.inputs.tickRate }}Hz" \
-                 "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"
-          fi
+         if [[ -f "${{ env.ZIP_PATH }}" ]]; then
+          KSU_TEXT=""
+         if [ "${{ github.event.inputs.buildKSU }}" != "noksu" ]; then
+          KSU_TEXT="
+         🔐 *KSU Variant:* \`${{ github.event.inputs.ksuVariant }}\`"
+         fi
+      
+         CAPTION="✅ *Kernel Build Successful*
+      
+         📦 *Build Information:*
+         • Kernel: \`Linux ${{ env.KERNEL_VERSION }}\`
+         • Android: \`13-16\`
+         • Branch: \`${{ github.event.inputs.kernelBranch }}\`
+         • Device: \`${{ github.event.inputs.kernelDevice }}\`
+    
+         ⚙️ *Configuration:*
+         • Optimization: \`-${{ github.event.inputs.optimizationLevel }}\`
+         • Tick Rate: \`${{ github.event.inputs.tickRate }}Hz\`
+         • Build Type: \`${{ github.event.inputs.buildKSU }}\`${KSU_TEXT}
+         • SUSFS: \`Enabled (GKI Android13-5.15)\`
+         • Local Version: \`${{ github.event.inputs.localVersion }}\`
+    
+         🕐 *Build Date:* $(date '+%Y-%m-%d %H:%M:%S UTC')
+         📦 *Package:* \`${{ env.ZIP_NAME }}\`"
+      
+         curl -s -F document=@"${{ env.ZIP_PATH }}" \
+           -F caption="$CAPTION" \
+           -F parse_mode="Markdown" \
+           -F chat_id=${{ secrets.TELEGRAM_USER_ID }} \
+           "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument"
+         else
+         FAILURE_MSG="❌ *Kernel Build Failed*
+      
+         📦 *Build Information:*
+         • Kernel: \`Linux ${{ env.KERNEL_VERSION }}\`
+         • Android: \`13-16\`
+         • Branch: \`${{ github.event.inputs.kernelBranch }}\`
+         • Device: \`Redmi Note 12/13 4G. Pad SE\`
+    
+         ⚙️ *Configuration:*
+         • Optimization: \`-${{ github.event.inputs.optimizationLevel }}\`
+         • Tick Rate: \`${{ github.event.inputs.tickRate }}Hz\`
+         • Build Type: \`${{ github.event.inputs.buildKSU }}\`
+         • Local Version: \`${{ github.event.inputs.localVersion }}\`
+    
+         🕐 *Failed at:* $(date '+%Y-%m-%d %H:%M:%S UTC')
+    
+         🔍 Check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."
+      
+         curl -s -X POST \
+           -d chat_id=${{ secrets.TELEGRAM_USER_ID }} \
+           -d text="$FAILURE_MSG" \
+           -d parse_mode="Markdown" \
+           "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"
+         fi
