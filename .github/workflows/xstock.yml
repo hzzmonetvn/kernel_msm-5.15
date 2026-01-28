@@ -14,7 +14,7 @@ on:
         description: "Optional swap size in GB to create on the runner (set 0 to disable)"
         required: true
         type: string
-        default: "10"
+        default: "8"
 
 jobs:
   build-kernels:
@@ -113,7 +113,7 @@ jobs:
       - name: "🧰 Setup swapfile (Automatic 10GB)"
         run: |
           # Fallback to 10 if input is not provided (e.g., on schedule)
-          SWAP_GB="${{ github.event.inputs.swapSizeGB || '10' }}"
+          SWAP_GB="${{ github.event.inputs.swapSizeGB || '8' }}"
           
           if [ "$SWAP_GB" != "0" ]; then
             echo "Creating ${SWAP_GB}GB swapfile..."
