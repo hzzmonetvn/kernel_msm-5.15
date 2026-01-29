@@ -5,7 +5,7 @@ This workflow is configured for specific devices. **You must modify the settings
 
 ## Extra Optimization (Only for test-a workflow)
 - Added Extra TCP Congestion: BBR, Cubic, Westwood
-- Added KSU Fork: KowSU, MamboSU, MamboSU-SUSFS(unstable, don't crying about it)
+- Added KSU Fork: KowSU, MamboSU
 - Added Custom Tickrate Options: 500hz, 600hz, 750hz
 - Added options to build with BBG
 - FullLTO build
