@@ -138,39 +138,29 @@ jobs:
         # swap creation happens early so build processes can use it
         run: |
           SWAP_GB="${{ github.event.inputs.swapSizeGB }}"
-          # Normalize empty input to 0
-          if [ -z "$SWAP_GB" ]; then
-            SWAP_GB=0
-          fi
+          if [ -z "$SWAP_GB" ]; then SWAP_GB=0; fi
 
           if [ "$SWAP_GB" != "0" ]; then
-            echo "Requested swap: ${SWAP_GB}G"
-            # If /swapfile exists, try to remove it first to avoid conflicts
-            if [ -f /swapfile ]; then
-              echo "Existing /swapfile found, disabling and removing..."
-              sudo swapoff /swapfile || true
-              sudo rm -f /swapfile
-            fi
+          echo "Requested swap: ${SWAP_GB}G"
 
-            # Try to create swap with fallocate for speed; fallback to dd
-            if command -v fallocate >/dev/null 2>&1; then
-              echo "Creating swapfile with fallocate..."
-              sudo fallocate -l ${SWAP_GB}G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=$((SWAP_GB * 1024))
-            else
-              echo "fallocate not available, creating swapfile with dd..."
-              sudo dd if=/dev/zero of=/swapfile bs=1M count=$((SWAP_GB * 1024))
-            fi
+          sudo swapoff -a || true
 
-            sudo chmod 600 /swapfile
-            sudo mkswap /swapfile
-            sudo swapon /swapfile
-            # Reduce swappiness so system prefers RAM but can use swap when needed
-            sudo sysctl -w vm.swappiness=10 || true
+          sleep 2
+          
+          SWAP_PATH="/mnt/swapfile_custom"
 
-            echo "SWAP_CREATED=true" >> $GITHUB_ENV
-            echo "/swapfile created and activated (size: ${SWAP_GB}G)"
+          echo "Creating swapfile at $SWAP_PATH..."
+          sudo fallocate -l ${SWAP_GB}G $SWAP_PATH || sudo dd if=/dev/zero of=$SWAP_PATH bs=1M count=$((SWAP_GB * 1024))
+
+          sudo chmod 600 $SWAP_PATH
+          sudo mkswap $SWAP_PATH
+          sudo swapon $SWAP_PATH
+          sudo sysctl -w vm.swappiness=10 || true
+
+          echo "SWAP_CREATED=true" >> $GITHUB_ENV
+          echo "$SWAP_PATH created and activated (size: ${SWAP_GB}G)"
           else
-            echo "No swap requested (swapSizeGB=${SWAP_GB})"
+          echo "No swap requested."
           fi
       
       - name: "🌟 Clone kernel source"
