@@ -14,7 +14,7 @@ on:
         description: "Optional swap size in GB to create on the runner (set 0 to disable)"
         required: true
         type: string
-        default: "8"
+        default: "10"
 
 jobs:
   build-kernels:
@@ -111,28 +111,32 @@ jobs:
           df -h /
 
       - name: "🧰 Setup swapfile (Automatic 10GB)"
+        # swap creation happens early so build processes can use it
         run: |
-          # Fallback to 10 if input is not provided (e.g., on schedule)
-          SWAP_GB="${{ github.event.inputs.swapSizeGB || '8' }}"
-          
+          SWAP_GB="${{ github.event.inputs.swapSizeGB }}"
+          if [ -z "$SWAP_GB" ]; then SWAP_GB=0; fi
+
           if [ "$SWAP_GB" != "0" ]; then
-            echo "Creating ${SWAP_GB}GB swapfile..."
-            
-            # Use fallocate for speed, fallback to dd if the FS doesn't support it
-            sudo fallocate -l ${SWAP_GB}G /swapfile || \
-              sudo dd if=/dev/zero of=/swapfile bs=1M count=$((SWAP_GB * 1024))
-            
-            sudo chmod 600 /swapfile
-            sudo mkswap /swapfile
-            sudo swapon /swapfile
-            
-            # Tune swappiness (standard for kernel builds is 10-60)
-            sudo sysctl -w vm.swappiness=10
-            
-            echo "✅ Swap of ${SWAP_GB}GB is active."
-            free -h
+          echo "Requested swap: ${SWAP_GB}G"
+
+          sudo swapoff -a || true
+
+          sleep 2
+          
+          SWAP_PATH="/mnt/swapfile_custom"
+
+          echo "Creating swapfile at $SWAP_PATH..."
+          sudo fallocate -l ${SWAP_GB}G $SWAP_PATH || sudo dd if=/dev/zero of=$SWAP_PATH bs=1M count=$((SWAP_GB * 1024))
+
+          sudo chmod 600 $SWAP_PATH
+          sudo mkswap $SWAP_PATH
+          sudo swapon $SWAP_PATH
+          sudo sysctl -w vm.swappiness=10 || true
+
+          echo "SWAP_CREATED=true" >> $GITHUB_ENV
+          echo "$SWAP_PATH created and activated (size: ${SWAP_GB}G)"
           else
-            echo "⚠️ Swap creation skipped (requested 0GB)."
+          echo "No swap requested."
           fi
 
       - name: "🌟 Clone kernel source"
