@@ -674,7 +674,7 @@ jobs:
           rm -rf ./KernelSU ./drivers/kernelsu
           
           # Install MamboSU
-          curl -LSs "https://raw.githubusercontent.com/yougotme101/KernelSU/refs/heads/master/kernel/setup.sh" | bash -s master
+          curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/master/kernel/setup.sh" | bash -s master
           
           # Add KSU configs
           CONFIG_FILE="arch/arm64/configs/${{ env.DEFCONFIG_NAME }}"
