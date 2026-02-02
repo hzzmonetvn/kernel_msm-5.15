@@ -12,12 +12,12 @@ on:
         description: "Kernel source URL"
         required: true
         type: string
-        default: "https://github.com/topnotchfreaks/kernel_msm-5.15"
+        default: "https://github.com/hzzmonetvn/xiaomi_kernel_sm8550"
       kernelBranch:
         description: "Kernel branch"
         required: false
         type: string
-        default: "codelinaro"
+        default: "main"
       kernelDevice:
         description: "Device (used for defconfig)"
         required: true
@@ -27,12 +27,12 @@ on:
         description: "Custom localversion name (e.g., -mybuild)"
         required: false
         type: string
-        default: ""
+        default: "-HzzMonet"
       buildKSU:
         description: "Build KSU variant?"
         required: true
         type: choice
-        default: "both"
+        default: "ksu"
         options:
           - "noksu"
           - "ksu"
@@ -76,7 +76,7 @@ on:
         description: "Baseband-guard Support (if KSU Enabled)"
         required: true
         type: choice
-        default: "on"
+        default: "off"
         options:
           - "on"
           - "off"
@@ -363,7 +363,7 @@ jobs:
           EOF
 
           # Script sign patch
-          apply_patch "https://raw.githubusercontent.com/yougotme101/kernel_patches/main/0001-scripts-sign-builds.patch"
+          apply_patch "https://raw.githubusercontent.com/hzzmonetvn/kernel_patches_sus/refs/heads/main/0001-scripts-sign-builds.patch"
           
           echo "✅ Applied -${{ github.event.inputs.optimizationLevel }} Optimization"
           echo "✅ Applied ${{ github.event.inputs.tickRate }}Hz tick rate"
@@ -758,7 +758,7 @@ jobs:
       - name: "📦 Create flashable ZIP"
         run: |
           BUILD_TIME=$(date +'%Y-%m-%d')
-          git clone --depth=1 https://github.com/yougotme101/AnyKernel3 -b master AnyKernel3
+          git clone --depth=1 https://github.com/hzzmonetvn/AnyKernel3 -b gki-2.0 AnyKernel3
           
           # Copy kernels
           find kernels -name "Image.*" -exec cp {} AnyKernel3/ \;
@@ -822,7 +822,7 @@ jobs:
          • Kernel: \`Linux ${{ env.KERNEL_VERSION }}\`
          • Android: \`13-16\`
          • Branch: \`${{ github.event.inputs.kernelBranch }}\`
-         • Device: \`Redmi Note 12/13 4G. Pad SE\`
+         • Device: \`Xiaomi 13 Pro( 13 maybe boot)\`
     
          ⚙️ *Configuration:*
          • Optimization: \`-${{ github.event.inputs.optimizationLevel }}\`
