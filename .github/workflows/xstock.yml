@@ -14,7 +14,7 @@ on:
         description: "Optional swap size in GB to create on the runner (set 0 to disable)"
         required: true
         type: string
-        default: "10"
+        default: "8"
 
 jobs:
   build-kernels:
@@ -131,7 +131,7 @@ jobs:
           sudo chmod 600 $SWAP_PATH
           sudo mkswap $SWAP_PATH
           sudo swapon $SWAP_PATH
-          sudo sysctl -w vm.swappiness=10 || true
+          sudo sysctl -w vm.swappiness=80 || true
 
           echo "SWAP_CREATED=true" >> $GITHUB_ENV
           echo "$SWAP_PATH created and activated (size: ${SWAP_GB}G)"
